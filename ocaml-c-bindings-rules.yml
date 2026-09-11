@@ -1,0 +1,158 @@
+rules:
+  - id: ocaml-c-bindings-properly-values-saving
+    languages: [c]
+    severity: WARNING
+    message: >
+      OCaml value '$NAME' may be moved or collected by the GC before it is used.
+    metadata:
+      category: correctness
+      technology: [ocaml, c]
+    patterns:
+      - pattern: $TY $NAME = String_val(...);
+      - pattern-inside: $RET $FUNC(...) { ... }
+
+  - id: ocaml-c-bindings-unrooted-local-value
+    languages: [c]
+    severity: WARNING
+    message: >
+      Local OCaml value '$NAME' may be unrooted. Register it with CAMLlocal1,
+      CAMLlocal2, etc. before calling allocating OCaml C APIs.
+    metadata:
+      category: correctness
+      technology: [ocaml, c]
+    patterns:
+      - pattern-either:
+        - pattern: value $NAME;
+        - pattern: $NAME = caml_alloc_tuple(...);
+      - pattern-inside: $RET $FUNC(...) { ... }
+      - pattern-not-inside: $RET $FUNC(...) { ... CAMLlocal1($NAME); ... }
+      - pattern-not-inside: $RET $FUNC(...) { ... CAMLlocal2(..., $NAME, ...); ... }
+      - pattern-not-inside: $RET $FUNC(...) { ... CAMLlocal3(..., $NAME, ...); ... }
+      - pattern-not-inside: $RET $FUNC(...) { ... CAMLlocal4(..., $NAME, ...); ... }
+      - pattern-not-inside: $RET $FUNC(...) { ... CAMLlocal5(..., $NAME, ...); ... }
+
+  - id: ocaml-c-bindings-unrooted-params-value
+    languages: [c]
+    severity: WARNING
+    metadata:
+      category: correctness
+      technology: [ocaml, c]
+    message: >
+      OCaml value parameter '$NAME' is not registered with CAMLparam*. Register
+      value parameters before calling code that may trigger the garbage collector.
+    patterns:
+      - pattern-inside: $RET $FUNC(..., value $NAME, ...) { ... }
+      - pattern-not-inside: $RET $FUNC(..., value $NAME, ...) { ... CAMLparam1($NAME); ... }
+      - pattern-not-inside: $RET $FUNC(..., value $NAME, ...) { ... CAMLparam2(..., $NAME, ...); ... }
+      - pattern-not-inside: $RET $FUNC(..., value $NAME, ...) { ... CAMLparam3(..., $NAME, ...); ... }
+      - pattern-not-inside: $RET $FUNC(..., value $NAME, ...) { ... CAMLparam4(..., $NAME, ...); ... }
+      - pattern-not-inside: $RET $FUNC(..., value $NAME, ...) { ... CAMLparam5(..., $NAME, ...); ... }
+      - pattern-not-inside: $RET $FUNC(..., value $NAME, ...) { ... CAMLxparam1(..., $NAME, ...); ... }
+      - pattern-not-inside: $RET $FUNC(..., value $NAME, ...) { ... CAMLxparam2(..., $NAME, ...); ... }
+      - pattern-not-inside: $RET $FUNC(..., value $NAME, ...) { ... CAMLxparam3(..., $NAME, ...); ... }
+      - pattern-not-inside: $RET $FUNC(..., value $NAME, ...) { ... CAMLxparam4(..., $NAME, ...); ... }
+      - pattern-not-inside: $RET $FUNC(..., value $NAME, ...) { ... CAMLxparam5(..., $NAME, ...); ... }
+      - pattern-not-inside: $RET $FUNC(value unit) { ... return ...; }
+      - pattern-not-inside: void $FUNC(..., value $NAME, ...) { ... }
+
+  - id: ocaml-c-bindings-unbalanced-runtime-blocking-section
+    languages: [c]
+    severity: CRITICAL
+    metadata:
+      category: correctness
+      technology: [ocaml, c]
+    message: >
+      caml_enter_blocking_section() must be paired with
+      caml_leave_blocking_section() in the same function.
+    patterns:
+      - pattern: caml_enter_blocking_section();
+      - pattern-inside: $RET $FUNC(...) { ... }
+      - pattern-not-inside: |
+          $RET $FN(...) { ... caml_leave_blocking_section(); ... }
+
+  - id: ocaml-c-bindings-runtime-use-in-blocking-section
+    languages: [c]
+    severity: CRITICAL
+    metadata:
+      category: correctness
+      technology: [ocaml, c]
+    message: >
+      Do not allocate or access OCaml values inside a blocking section.
+      Convert OCaml values to C data before caml_enter_blocking_section()
+      and create OCaml values only after caml_leave_blocking_section().
+    patterns:
+      - pattern-inside: |
+          caml_enter_blocking_section();
+          ...
+          caml_leave_blocking_section();
+      - pattern-either:
+          # Allocation of OCaml values.
+          - pattern: caml_alloc(...);
+          - pattern: caml_alloc_small(...);
+          - pattern: caml_alloc_shr(...);
+          - pattern: caml_alloc_tuple(...);
+          - pattern: caml_alloc_string(...);
+          - pattern: caml_alloc_initialized_string(...);
+          - pattern: caml_copy_string(...);
+          - pattern: caml_copy_int32(...);
+          - pattern: caml_copy_int64(...);
+          - pattern: caml_copy_nativeint(...);
+          - pattern: caml_copy_double(...);
+          - pattern: caml_alloc_custom(...);
+
+          # Access to OCaml strings and byte arrays.
+          - pattern: String_val(...)
+          - pattern: Bytes_val(...)
+          - pattern: caml_string_length(...)
+          - pattern: caml_bytes_length(...)
+
+          # Access to OCaml heap blocks.
+          - pattern: Field(..., ...)
+          - pattern: Store_field(..., ..., ...)
+          - pattern: Tag_val(...)
+          - pattern: Wosize_val(...)
+          - pattern: Is_block(...)
+          - pattern: Is_long(...)
+
+          # Conversions between C values and OCaml values.
+          - pattern: Int_val(...)
+          - pattern: Long_val(...)
+          - pattern: Bool_val(...)
+          - pattern: Char_val(...)
+          - pattern: Double_val(...)
+          - pattern: Nativeint_val(...)
+          - pattern: Int32_val(...)
+          - pattern: Int64_val(...)
+          - pattern: Val_int(...)
+          - pattern: Val_long(...)
+          - pattern: Val_bool(...)
+          - pattern: Val_char(...)
+          - pattern: caml_copy_double(...)
+
+          # Calls into OCaml or operations that may allocate/raise.
+          - pattern: caml_callback(...)
+          - pattern: caml_callback2(...)
+          - pattern: caml_callback3(...)
+          - pattern: caml_callbackN(...)
+          - pattern: caml_raise(...)
+          - pattern: caml_raise_constant(...)
+          - pattern: caml_raise_with_arg(...)
+          - pattern: caml_raise_with_args(...)
+          - pattern: caml_raise_with_string(...)
+          - pattern: caml_failwith(...)
+          - pattern: caml_invalid_argument(...)
+
+  - id: ocaml-c-bindings-invalid-value-conversion
+    languages: [c]
+    severity: WARNING
+    metadata:
+      category: correctness
+      technology: [ocaml, c]
+    message: >
+      '$E' expects an OCaml value, not a C integer. Use Val_int() or
+      Val_bool() when converting a C integer or boolean to an OCaml value.
+    patterns:
+      - pattern-either:
+          - pattern: Int_val($EXPR)
+          - pattern: Bool_val($EXPR)
+      - pattern-inside: $RET $FUNC(...) { ... ...; }
