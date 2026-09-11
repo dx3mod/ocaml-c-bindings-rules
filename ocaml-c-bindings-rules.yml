@@ -22,8 +22,8 @@ rules:
       technology: [ocaml, c]
     patterns:
       - pattern-either:
-        - pattern: value $NAME;
-        - pattern: $NAME = caml_alloc_tuple(...);
+          - pattern: value $NAME;
+          - pattern: $NAME = caml_alloc_tuple(...);
       - pattern-inside: $RET $FUNC(...) { ... }
       - pattern-not-inside: $RET $FUNC(...) { ... CAMLlocal1($NAME); ... }
       - pattern-not-inside: $RET $FUNC(...) { ... CAMLlocal2(..., $NAME, ...); ... }
@@ -149,10 +149,12 @@ rules:
       category: correctness
       technology: [ocaml, c]
     message: >
-      '$E' expects an OCaml value, not a C integer. Use Val_int() or
+      '$EXPR' expects an OCaml value, not a C integer. Use Val_int() or
       Val_bool() when converting a C integer or boolean to an OCaml value.
     patterns:
       - pattern-either:
-          - pattern: Int_val($EXPR)
-          - pattern: Bool_val($EXPR)
-      - pattern-inside: $RET $FUNC(...) { ... ...; }
+          - pattern: return Int_val($EXPR);
+          - pattern: CAMLreturn(Int_val($EXPR));
+          - pattern: return Bool_val($EXPR);
+          - pattern: CAMLreturn(Bool_val($EXPR));
+      - pattern-inside: $RET $FUNC(...) { ... }
