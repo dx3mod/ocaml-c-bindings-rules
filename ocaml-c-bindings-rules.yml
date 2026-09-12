@@ -21,15 +21,33 @@ rules:
       category: correctness
       technology: [ocaml, c]
     patterns:
+      - metavariable-pattern:
+          metavariable: $ALLOC_FUNC
+          pattern-either:
+          - pattern: caml_alloc
+          - pattern: caml_alloc_small
+          - pattern: caml_alloc_shr
+          - pattern: caml_alloc_tuple
+          - pattern: caml_alloc_string
+          - pattern: caml_alloc_initialized_string
+          - pattern: caml_copy_string
+          - pattern: caml_copy_int32
+          - pattern: caml_copy_int64
+          - pattern: caml_copy_nativeint
+          - pattern: caml_copy_double
+          - pattern: caml_alloc_custom
       - pattern-either:
           - pattern: value $NAME;
-          - pattern: $NAME = caml_alloc_tuple(...);
+          - pattern: $NAME = $ALLOC_FUNC(...);
+          - pattern: value $NAME = $ALLOC_FUNC(...);
       - pattern-inside: $RET $FUNC(...) { ... }
       - pattern-not-inside: $RET $FUNC(...) { ... CAMLlocal1($NAME); ... }
       - pattern-not-inside: $RET $FUNC(...) { ... CAMLlocal2(..., $NAME, ...); ... }
       - pattern-not-inside: $RET $FUNC(...) { ... CAMLlocal3(..., $NAME, ...); ... }
       - pattern-not-inside: $RET $FUNC(...) { ... CAMLlocal4(..., $NAME, ...); ... }
       - pattern-not-inside: $RET $FUNC(...) { ... CAMLlocal5(..., $NAME, ...); ... }
+      - pattern-not-inside: ... static value $FUNC(...) { value $NAME = $EXPR; ... return $NAME; }
+      - pattern-not-inside: ... static value $FUNC(...) { value $NAME; ... return $NAME; }
 
   - id: ocaml-c-bindings-unrooted-params-value
     languages: [c]
