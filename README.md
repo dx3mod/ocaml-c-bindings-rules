@@ -10,6 +10,7 @@ Rules:
 5. `ocaml-c-bindings-runtime-use-in-blocking-section`
 6. `ocaml-c-bindings-invalid-value-conversion`
 7. `ocaml-c-bindings-resource-leak-before-ocaml-custom-alloc`
+8. `ocaml-c-bindings-camlparam-without-camlreturn`
 
 ### Usage
 

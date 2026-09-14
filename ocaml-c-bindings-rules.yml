@@ -162,7 +162,7 @@ rules:
 
   - id: ocaml-c-bindings-invalid-value-conversion
     languages: [c]
-    severity: WARNING
+    severity: ERROR
     metadata:
       category: correctness
       technology: [ocaml, c]
@@ -173,6 +173,8 @@ rules:
       - pattern-either:
           - pattern: return Int_val($EXPR);
           - pattern: CAMLreturn(Int_val($EXPR));
+          - pattern: return Long_val($EXPR);
+          - pattern: CAMLreturn(Long_val($EXPR));
           - pattern: return Bool_val($EXPR);
           - pattern: CAMLreturn(Bool_val($EXPR));
       - pattern-inside: $RET $FUNC(...) { ... }
