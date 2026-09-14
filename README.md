@@ -9,6 +9,7 @@ Rules:
 4. `ocaml-c-bindings-unbalanced-runtime-blocking-section`
 5. `ocaml-c-bindings-runtime-use-in-blocking-section`
 6. `ocaml-c-bindings-invalid-value-conversion`
+7. `ocaml-c-bindings-resource-leak-before-ocaml-custom-alloc`
 
 ### Usage
 

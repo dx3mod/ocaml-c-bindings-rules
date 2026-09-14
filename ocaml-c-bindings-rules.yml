@@ -176,3 +176,30 @@ rules:
           - pattern: return Bool_val($EXPR);
           - pattern: CAMLreturn(Bool_val($EXPR));
       - pattern-inside: $RET $FUNC(...) { ... }
+
+  - id: ocaml-c-bindings-resource-leak-before-ocaml-custom-alloc
+    languages: [c]
+    severity: WARNING
+    metadata:
+      category: correctness
+      technology: [ocaml, c]
+    message: |
+      Potential resource leak before OCaml custom block allocation.
+      A C resource (handle, pointer, context) is allocated/created before caml_alloc_custom is called.
+      If caml_alloc_custom raises an exception (e.g., Out_of_memory), the OCaml runtime
+      performs a longjmp, bypassing C cleanup code, which leaks the acquired resource.
+
+      How to fix: Allocate the custom block first (with NULL), then acquire the resource.
+
+    patterns:
+      - pattern-inside: |
+          $RET $FUNC(...) {
+            ...
+          }
+      - pattern-either:
+          - pattern: |
+              $C_TYPE *$C_VALUE = $ALLOC_C_VAL_FUNC(...);
+              ...
+              $NAME = caml_alloc_custom($OPS, sizeof($C_TYPE *), ...);
+              ...
+              $MACRO($NAME) = $C_VALUE;
