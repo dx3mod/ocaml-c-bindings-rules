@@ -192,10 +192,7 @@ rules:
       How to fix: Allocate the custom block first (with NULL), then acquire the resource.
 
     patterns:
-      - pattern-inside: |
-          $RET $FUNC(...) {
-            ...
-          }
+      - pattern-inside: $RET $FUNC(...) { ... }
       - pattern-either:
           - pattern: |
               $C_TYPE *$C_VALUE = $ALLOC_C_VAL_FUNC(...);
@@ -203,3 +200,31 @@ rules:
               $NAME = caml_alloc_custom($OPS, sizeof($C_TYPE *), ...);
               ...
               $MACRO($NAME) = $C_VALUE;
+
+  - id: ocaml-c-bindings-camlparam-without-camlreturn
+    languages: [c]
+    severity: CRITICAL
+    metadata:
+      category: correctness
+      technology: [ocaml, c]
+    message: >
+      Function uses CAMLparam but does not contain a matching CAMLreturn,
+      CAMLreturn0, or CAMLreturnT. Every OCaml FFI function that calls
+      CAMLparam must restore the GC state before returning; a plain
+      `return` will corrupt the OCaml runtime (roots stack, local_roots).
+    patterns:
+      - metavariable-pattern:
+          metavariable: $PARAM
+          pattern-either:
+          - pattern: CAMLparam0
+          - pattern: CAMLparam1
+          - pattern: CAMLparam2
+          - pattern: CAMLparam3
+          - pattern: CAMLparam4
+          - pattern: CAMLparam5
+      - pattern-inside: $RET $FUNC(...) { ... $PARAM(..., $NAME, ...); ... }
+      - pattern-not: CAMLreturn($NAME);
+      - pattern-not: CAMLreturn($EXPR);
+      - pattern-either:
+        - pattern: return $EXPR;
+    fix: CAMLreturn($EXPR);
